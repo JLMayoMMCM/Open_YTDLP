@@ -1,7 +1,55 @@
-.venv/
-__pycache__/
-*.pyc
-data/settings.json
-downloads/*
-!downloads/.gitkeep
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# netlify (local CLI state from `netlify link`/`netlify dev`, e.g. site ID — not netlify/plugins/, which is committed)
+.netlify
+
+# heap snapshots (see Next.js's memory-usage debugging guide)
+*.heapprofile
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# yt-dlp binary (user-provided, see README)
 bin/*.exe
+bin/yt-dlp
+bin/*.zip
+
+# generated at install time (see scripts/copy-ffmpeg-core.mjs)
+/public/ffmpeg-core/

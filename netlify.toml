@@ -1,0 +1,14 @@
+[build]
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "20.9.0"
+
+# Downloads a Linux yt-dlp binary into bin/yt-dlp before `next build` runs.
+# See netlify/plugins/fetch-ytdlp and next.config.ts's outputFileTracingIncludes.
+[[plugins]]
+  package = "./netlify/plugins/fetch-ytdlp"
+
+# Netlify auto-detects Next.js and installs @netlify/plugin-nextjs (the
+# Next.js Runtime) to provision serverless functions for the app/api routes
+# — no explicit [[plugins]] entry needed for it.
