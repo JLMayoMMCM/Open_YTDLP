@@ -21,6 +21,7 @@ interface ExtractState {
   renderProgress: number;
   error: string | null;
   savedFilename: string | null;
+  cookies: string;
 }
 
 const DEFAULT_SELECTION: ExtractSelection = {
@@ -40,6 +41,7 @@ function initialState(): ExtractState {
     renderProgress: 0,
     error: null,
     savedFilename: null,
+    cookies: "",
   };
 }
 
@@ -100,11 +102,12 @@ export function useExtractJob() {
     setState((prev) => ({ ...prev, ...partial }));
   }, []);
 
-  const probeVideo = useCallback(async (url: string) => {
+  const probeVideo = useCallback(async (url: string, cookies?: string) => {
     abortRef.current?.abort();
     setState((prev) => ({
       ...initialState(),
       selection: prev.selection,
+      cookies: cookies ?? "",
       phase: "probing",
     }));
 
@@ -112,7 +115,7 @@ export function useExtractJob() {
       const res = await fetch("/api/probe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, cookies: cookies || undefined }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Failed to fetch video info.");
@@ -148,7 +151,7 @@ export function useExtractJob() {
   }, []);
 
   const startExtract = useCallback(async () => {
-    const { probe, selection } = state;
+    const { probe, selection, cookies } = state;
     if (!probe) return;
 
     const videoFormat =
@@ -211,7 +214,7 @@ export function useExtractJob() {
       const resolveRes = await fetch("/api/resolve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: probe.webpageUrl, formatIds }),
+        body: JSON.stringify({ url: probe.webpageUrl, formatIds, cookies: cookies || undefined }),
         signal: controller.signal,
       });
       const resolveBody = await resolveRes.json();

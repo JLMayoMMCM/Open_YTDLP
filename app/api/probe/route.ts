@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await probeUrl(parsed.data.url);
+    const result = await probeUrl(parsed.data.url, parsed.data.cookies);
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof YtDlpNotFoundError) {

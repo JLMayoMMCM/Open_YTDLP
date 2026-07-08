@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const streams = await resolveStreams(parsed.data.url, parsed.data.formatIds);
+    const streams = await resolveStreams(parsed.data.url, parsed.data.formatIds, parsed.data.cookies);
     return NextResponse.json({
       streams: streams.map((s) => ({
         formatId: s.formatId,

@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { findYtDlp } from "./binary";
 import type { RawYtDlpInfo } from "./types";
-import { YtDlpNotFoundError, ProbeError, cleanYtDlpError, YTDLP_COMMON_ARGS } from "./probe";
+import { YtDlpNotFoundError, ProbeError, cleanYtDlpError, YTDLP_COMMON_ARGS, withCookiesFile } from "./probe";
 
 const execFileAsync = promisify(execFile);
 
@@ -19,7 +19,11 @@ export interface ResolvedStream {
  * is deliberately re-resolved right before proxying rather than reusing
  * probe-time URLs, since some sites' direct URLs are short-lived/IP-bound.
  */
-export async function resolveStreams(url: string, formatIds: string[]): Promise<ResolvedStream[]> {
+export async function resolveStreams(
+  url: string,
+  formatIds: string[],
+  cookies?: string,
+): Promise<ResolvedStream[]> {
   if (formatIds.length < 1 || formatIds.length > 2) {
     throw new ProbeError("Expected 1 or 2 format IDs to resolve.");
   }
@@ -32,12 +36,14 @@ export async function resolveStreams(url: string, formatIds: string[]): Promise<
   let stdout: string;
   try {
     // See probe.ts for why this is kept under 30s.
-    const result = await execFileAsync(
-      bin,
-      ["-f", selector, ...YTDLP_COMMON_ARGS, "-j", "--", url],
-      { timeout: 20_000, maxBuffer: 20 * 1024 * 1024 },
-    );
-    stdout = result.stdout;
+    stdout = await withCookiesFile(cookies, async (cookieArgs) => {
+      const result = await execFileAsync(
+        bin,
+        ["-f", selector, ...YTDLP_COMMON_ARGS, ...cookieArgs, "-j", "--", url],
+        { timeout: 20_000, maxBuffer: 20 * 1024 * 1024 },
+      );
+      return result.stdout;
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     throw new ProbeError(cleanYtDlpError(message));

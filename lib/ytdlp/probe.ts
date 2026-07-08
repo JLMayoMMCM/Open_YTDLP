@@ -1,10 +1,34 @@
 import { execFile } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import { findYtDlp } from "./binary";
 import type { RawYtDlpFormat, RawYtDlpInfo } from "./types";
 import type { ProbeFormat, ProbeResponse } from "@/lib/formats/types";
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * Writes `cookies` (Netscape cookie-file format, pasted by the user) to a
+ * temp file scoped to this single yt-dlp invocation, passes it via
+ * `--cookies`, then deletes it — the cookie text is never persisted beyond
+ * the request that carried it. No-op (no `--cookies` flag) when omitted.
+ */
+export async function withCookiesFile<T>(
+  cookies: string | undefined,
+  run: (cookieArgs: string[]) => Promise<T>,
+): Promise<T> {
+  if (!cookies) return run([]);
+  const dir = await mkdtemp(join(tmpdir(), "ytdlp-cookies-"));
+  const file = join(dir, "cookies.txt");
+  try {
+    await writeFile(file, cookies, "utf8");
+    return await run(["--cookies", file]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
 
 // YouTube increasingly serves its "Sign in to confirm you're not a bot"
 // challenge to requests from datacenter/serverless IP ranges (e.g. Netlify's).
@@ -80,7 +104,7 @@ function normalizeFormat(f: RawYtDlpFormat): ProbeFormat {
  * Rejects playlist/channel URLs the same way the old backend did — this app
  * only ever operates on a single video.
  */
-export async function probeUrl(url: string): Promise<ProbeResponse> {
+export async function probeUrl(url: string, cookies?: string): Promise<ProbeResponse> {
   const bin = findYtDlp();
   if (!bin) throw new YtDlpNotFoundError();
 
@@ -89,12 +113,14 @@ export async function probeUrl(url: string): Promise<ProbeResponse> {
     // Kept comfortably under typical serverless function response-timeout
     // ceilings (e.g. Netlify's default synchronous function limit) so a
     // slow extractor fails with our own message instead of a bare 504.
-    const result = await execFileAsync(
-      bin,
-      ["--dump-single-json", ...YTDLP_COMMON_ARGS, "--", url],
-      { timeout: 20_000, maxBuffer: 20 * 1024 * 1024 },
-    );
-    stdout = result.stdout;
+    stdout = await withCookiesFile(cookies, async (cookieArgs) => {
+      const result = await execFileAsync(
+        bin,
+        ["--dump-single-json", ...YTDLP_COMMON_ARGS, ...cookieArgs, "--", url],
+        { timeout: 20_000, maxBuffer: 20 * 1024 * 1024 },
+      );
+      return result.stdout;
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     throw new ProbeError(cleanYtDlpError(message));
