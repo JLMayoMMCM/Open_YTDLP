@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { findYtDlp } from "./binary";
 import type { RawYtDlpInfo } from "./types";
-import { YtDlpNotFoundError, ProbeError, cleanYtDlpError } from "./probe";
+import { YtDlpNotFoundError, ProbeError, cleanYtDlpError, YTDLP_COMMON_ARGS } from "./probe";
 
 const execFileAsync = promisify(execFile);
 
@@ -34,7 +34,7 @@ export async function resolveStreams(url: string, formatIds: string[]): Promise<
     // See probe.ts for why this is kept under 30s.
     const result = await execFileAsync(
       bin,
-      ["-f", selector, "--no-playlist", "--no-warnings", "--no-cache-dir", "-j", "--", url],
+      ["-f", selector, ...YTDLP_COMMON_ARGS, "-j", "--", url],
       { timeout: 20_000, maxBuffer: 20 * 1024 * 1024 },
     );
     stdout = result.stdout;

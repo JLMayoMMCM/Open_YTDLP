@@ -6,6 +6,20 @@ import type { ProbeFormat, ProbeResponse } from "@/lib/formats/types";
 
 const execFileAsync = promisify(execFile);
 
+// YouTube increasingly serves its "Sign in to confirm you're not a bot"
+// challenge to requests from datacenter/serverless IP ranges (e.g. Netlify's).
+// The mobile/TV player clients use a different auth flow that isn't subject
+// to that check, so requesting them first works around it without needing
+// cookies. Shared with resolve.ts so probing and resolving see the same
+// (and thus cache-compatible) format IDs.
+export const YTDLP_COMMON_ARGS = [
+  "--extractor-args",
+  "youtube:player_client=android,ios,tv",
+  "--no-playlist",
+  "--no-warnings",
+  "--no-cache-dir",
+];
+
 export class YtDlpNotFoundError extends Error {
   constructor() {
     super(
@@ -77,7 +91,7 @@ export async function probeUrl(url: string): Promise<ProbeResponse> {
     // slow extractor fails with our own message instead of a bare 504.
     const result = await execFileAsync(
       bin,
-      ["--dump-single-json", "--no-playlist", "--no-warnings", "--no-cache-dir", "--", url],
+      ["--dump-single-json", ...YTDLP_COMMON_ARGS, "--", url],
       { timeout: 20_000, maxBuffer: 20 * 1024 * 1024 },
     );
     stdout = result.stdout;
